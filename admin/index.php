@@ -11,8 +11,8 @@ $message = "";
 // 新增電影
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_movie'])) {
     try {
-        $sql = "INSERT INTO `movie` (MovieID, `片名`, `片長`, `類型`, `分級`, `語言`, `上映日`)
-                VALUES (:MovieID, :Title, :Length, :Genre, :Rating, :Lang, :ReleaseDate)";
+        $sql = "INSERT INTO `movie` (MovieID, `片名`, `片長`, `類型`, `分級`, `語言`, `上映日`, `IMG_URL`)
+            VALUES (:MovieID, :Title, :Length, :Genre, :Rating, :Lang, :ReleaseDate, :ImgUrl)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':MovieID' => $_POST['MovieID'],
@@ -21,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_movie'])) {
             ':Genre' => $_POST['類型'],
             ':Rating' => $_POST['分級'],
             ':Lang' => $_POST['語言'],
-            ':ReleaseDate' => $_POST['上映日'] ?: null
+          ':ReleaseDate' => $_POST['上映日'] ?: null,
+          ':ImgUrl' => $_POST['IMG_URL'] ?? null
         ]);
         $message = "✅ 新增電影成功";
     } catch (PDOException $e) {
@@ -307,6 +308,7 @@ $payRows     = $pdo->query("SELECT * FROM `付款` ORDER BY `付款時間` DESC"
         <div class="col-md-2"><input class="form-control" name="分級" placeholder="分級"></div>
         <div class="col-md-2"><input class="form-control" name="語言" placeholder="語言"></div>
         <div class="col-md-3"><input class="form-control" type="date" name="上映日" placeholder="上映日"></div>
+        <div class="col-md-6"><input class="form-control" type="url" name="IMG_URL" placeholder="海報圖片 URL（選填）"></div>
         <div class="col-md-2"><button class="btn btn-primary w-100">新增</button></div>
       </form>
 

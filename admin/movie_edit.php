@@ -12,12 +12,13 @@ if (!$row) die("找不到電影：".htmlspecialchars($id));
 /* 更新 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sql = "UPDATE `movie` 
-            SET `片名`=?, `片長`=?, `類型`=?, `分級`=?, `語言`=?, `上映日`=? 
+            SET `片名`=?, `片長`=?, `類型`=?, `分級`=?, `語言`=?, `上映日`=?, `IMG_URL`=? 
             WHERE `MovieID` = ?";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         $_POST['片名'], $_POST['片長'], $_POST['類型'],
         $_POST['分級'], $_POST['語言'], $_POST['上映日'] ?: null,
+        $_POST['IMG_URL'] ?? null,
         $id
     ]);
     header("Location: index.php");
@@ -54,6 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="col-md-3">
     <label class="form-label">上映日</label>
     <input class="form-control" type="date" name="上映日" value="<?= htmlspecialchars($row['上映日']) ?>">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">海報圖片 URL</label>
+    <input class="form-control" type="url" name="IMG_URL" value="<?= htmlspecialchars($row['IMG_URL'] ?? '') ?>" placeholder="https://...">
   </div>
   <div class="col-12">
     <button class="btn btn-success">儲存</button>

@@ -106,7 +106,8 @@ body {
 
     <img src="https://www.vscinemas.com.tw/upload/film/film_20250702001.jpg"
          data-trailer="https://youtu.be/9UgBN-tUGDY">
-
+    <img src="https://www.vscinemas.com.tw/upload/film/film_20250815002.jpg"
+         data-trailer="https://youtu.be/ttUwLaUr-a0?si=pKxGt4huXoUjcWbq">
     <!-- 以下無預告 → 自動顯示大圖 -->
     <img src="https://www.vscinemas.com.tw/upload/film/film_20250428011.jpg">
     <img src="https://www.vscinemas.com.tw/upload/film/film_20251027008.jpg">
@@ -121,7 +122,7 @@ body {
     <img src="https://www.vscinemas.com.tw/upload/film/film_20251104008.jpg"
          data-trailer="https://youtu.be/MGSGx36-TV4">
     <img src="https://www.vscinemas.com.tw/upload/film/film_20250815002.jpg"
-         data-trailer="https://youtu.be/9UgBN-tUGDY">
+         data-trailer="https://youtu.be/ttUwLaUr-a0?si=pKxGt4huXoUjcWbq">
     <img src="https://www.vscinemas.com.tw/upload/film/film_20250428011.jpg">
     <img src="https://www.vscinemas.com.tw/upload/film/film_20251027008.jpg">
     <img src="https://www.vscinemas.com.tw/upload/film/film_20251008015.jpg">
@@ -131,7 +132,8 @@ body {
   </div>
 </div>
 
-<!-- Modal：顯示大圖 -->
+
+<!-- Modal：顯示大圖（共用） -->
 <div class="modal fade" id="imgModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content bg-dark">
@@ -139,6 +141,8 @@ body {
     </div>
   </div>
 </div>
+
+<!-- 電影顯示窗已移至 movie_direction.php -->
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -159,6 +163,8 @@ document.querySelectorAll('.marquee-track img').forEach(img => {
     }
   });
 });
+
+// 電影顯示窗已移至 movie_direction.php
 </script>
 
 <!-- 單行橫幅（Banner） -->
@@ -180,12 +186,12 @@ document.querySelectorAll('.marquee-track img').forEach(img => {
   }
 </style>
 
-<div class="site-banner">
+<!--<div class="site-banner">
   <div class="container">
     <div class="credits">&copy; 2025 電影院線上購票系統</div>
     <div class="brand">製作人：熊亮凱 + chatGPT</div>
   </div>
-</div>
+</div>-->
 
 </body>
 </html>

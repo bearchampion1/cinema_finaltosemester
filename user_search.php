@@ -85,6 +85,7 @@ body { background: #f8f9fa; font-family: "微軟正黑體"; }
       <ul class="navbar-nav ms-auto">
         <li class="nav-item"><a class="nav-link active" href="index.php">🏠 首頁</a></li>
         <li class="nav-item"><a class="nav-link" href="user_search.php">🎬 查詢場次</a></li>
+        <li class="nav-item"><a class="nav-link" href="movie_direction.php">🖼 電影一覽</a></li>
         <li class="nav-item"><a class="nav-link" href="order_check.php">🎟 購票紀錄</a></li>
         <li class="nav-item"><a class="nav-link" href="#">📞 聯絡我們</a></li>
       </ul>
