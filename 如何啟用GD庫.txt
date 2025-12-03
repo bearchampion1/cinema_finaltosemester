@@ -1,0 +1,133 @@
+# 如何啟用 PHP GD 圖像庫（用於生成 QR Code）
+
+## 問題說明
+錯誤訊息：`Call to undefined function ImageCreate()`
+原因：PHP 的 GD 圖像庫未啟用
+
+## 解決方案
+
+### 方案 1：啟用 GD 庫（推薦）
+
+#### XAMPP 用戶：
+
+1. 找到 `php.ini` 檔案
+   - 路徑通常在：`C:\xampp\php\php.ini`
+   - 或點擊 XAMPP Control Panel → Apache → Config → PHP (php.ini)
+
+2. 用記事本開啟 `php.ini`
+
+3. 搜尋（Ctrl+F）：`;extension=gd`
+
+4. 移除前面的分號：
+   ```ini
+   # 改之前（已停用）
+   ;extension=gd
+   
+   # 改之後（啟用）
+   extension=gd
+   ```
+
+5. 儲存檔案
+
+6. 重啟 Apache
+   - 在 XAMPP Control Panel 點擊 Apache 的 Stop
+   - 再點擊 Start
+
+7. 驗證是否成功：
+   - 建立測試檔案 `test_gd.php`：
+   ```php
+   <?php
+   if (function_exists('imagecreate')) {
+       echo "✅ GD 庫已啟用！";
+   } else {
+       echo "❌ GD 庫未啟用";
+   }
+   phpinfo();
+   ?>
+   ```
+   - 訪問該檔案，應該會看到「GD 庫已啟用」
+
+---
+
+### 方案 2：使用線上 QR Code API（目前方案）
+
+目前程式碼已修改為不需要 GD 庫：
+- ✅ Email 中顯示大字體取票代碼
+- ✅ 提供連結前往網站查看 QR Code
+- ✅ 不需要額外設定
+
+優點：
+- 無需修改 PHP 設定
+- 立即可用
+- 相容性好
+
+---
+
+### 方案 3：使用線上 QR Code 服務（進階）
+
+如果需要在 Email 中顯示 QR Code 圖片：
+
+修改 `send_ticket_email.php`：
+
+```php
+// 使用 Google Chart API 生成 QR Code
+$qrCodeUrl = "https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=" . urlencode($ticketCode);
+
+// 在 HTML 中使用
+<img src='" . $qrCodeUrl . "' alt='QR Code' style='max-width: 200px;'>
+```
+
+注意：需要網路連線
+
+---
+
+## 建議
+
+**最佳選擇：啟用 GD 庫（方案 1）**
+- 一勞永逸
+- 功能完整
+- 不依賴外部服務
+
+**臨時方案：目前方案（方案 2）**
+- 無需設定
+- 立即可用
+- 顧客可點連結查看 QR Code
+
+---
+
+## 驗證 GD 庫是否已啟用
+
+在任何 PHP 檔案中執行：
+```php
+<?php
+echo "GD 庫狀態：";
+echo function_exists('imagecreate') ? '✅ 已啟用' : '❌ 未啟用';
+?>
+```
+
+---
+
+## 常見問題
+
+**Q: 找不到 php.ini 檔案？**
+A: 執行 `<?php phpinfo(); ?>` 查看 "Loaded Configuration File" 位置
+
+**Q: 修改後還是沒用？**
+A: 
+1. 確認修改的是正確的 php.ini（可能有多個）
+2. 確認已重啟 Apache
+3. 檢查是否有多餘空格或錯字
+
+**Q: 不想啟用 GD 庫可以嗎？**
+A: 可以！目前程式碼已改為不需要 GD 庫，Email 中顯示大字體取票代碼，顧客點擊連結可查看 QR Code
+
+---
+
+## 目前程式碼狀態
+
+✅ Email 功能已修正
+✅ 不需要 GD 庫也能正常運作
+✅ 顧客會收到清楚的取票代碼
+✅ 可點擊連結查看完整電子票券與 QR Code
+
+如需在 Email 中直接顯示 QR Code，請按照方案 1 啟用 GD 庫。

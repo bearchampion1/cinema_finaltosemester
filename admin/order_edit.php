@@ -19,7 +19,7 @@ $payment = $stmt2->fetch(PDO::FETCH_ASSOC);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $sql = "UPDATE 訂單 
-            SET `取票代碼`=?, `總金額`=?, `訂購時間`=?, `ShowTimeID`=?
+            SET `取票代碼`=?, `總金額`=?, `訂購時間`=?, `ShowTimeID`=?, `顧客姓名`=?, `顧客Email`=?
             WHERE `OrderID`=?";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_POST['總金額'],
         $_POST['訂購時間'] ?: null,
         $_POST['ShowTimeID'],
+        $_POST['顧客姓名'] ?? '',
+        $_POST['顧客Email'] ?? '',
         $id
     ]);
 
@@ -68,6 +70,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="col-md-3">
     <label class="form-label">ShowTimeID</label>
     <input class="form-control" name="ShowTimeID" value="<?= htmlspecialchars($order['ShowTimeID']) ?>">
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label">顧客姓名</label>
+    <input class="form-control" name="顧客姓名" value="<?= htmlspecialchars($order['顧客姓名'] ?? '') ?>">
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label">顧客Email</label>
+    <input class="form-control" type="email" name="顧客Email" value="<?= htmlspecialchars($order['顧客Email'] ?? '') ?>">
   </div>
 
   <!-- 分隔線 -->

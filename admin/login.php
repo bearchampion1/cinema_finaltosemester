@@ -22,18 +22,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $user = trim($_POST['username'] ?? '');
     $pass = $_POST['password'] ?? '';
-    if ($user === '' || $pass === '') {
-        $error = '請填寫帳號與密碼';
+    
+    if ($user === '') {
+        $error = '請填寫帳號';
     } else {
+        // 檢查帳號是否存在
         $stmt = $pdo->prepare('SELECT password_hash FROM admin_users WHERE username = :u');
         $stmt->execute([':u'=>$user]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row && password_verify($pass, $row['password_hash'])) {
-          $_SESSION['is_admin'] = true;
-          $_SESSION['admin_user'] = $user;
-          header('Location: index.php'); exit;
+        
+        if (!$row) {
+            $error = '此帳號不存在';
+        } elseif (empty($row['password_hash'])) {
+            // 帳號存在但未設定密碼，導向設定密碼頁面
+            $_SESSION['setup_admin_user'] = $user;
+            header('Location: setup_password.php'); exit;
+        } elseif ($pass === '') {
+            $error = '請填寫密碼';
+        } elseif (password_verify($pass, $row['password_hash'])) {
+            // 密碼正確，登入成功
+            $_SESSION['is_admin'] = true;
+            $_SESSION['admin_user'] = $user;
+            header('Location: index.php'); exit;
         } else {
-            $error = '帳號或密碼錯誤';
+            $error = '密碼錯誤';
         }
     }
 }
@@ -58,12 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <input class="form-control" name="username" required>
     </div>
     <div class="mb-2">
-      <label class="form-label">密碼</label>
-      <input class="form-control" type="password" name="password" required>
+      <label class="form-label" >密碼</label>
+      <input class="form-control" type="password" name="password" placeholder="請輸入密碼，新管理員請隨便打一個數字" required>
     </div>
     <div class="d-flex gap-2">
       <button class="btn btn-primary">登入</button>
-      <a class="btn btn-outline-secondary" href="register.php">註冊帳號</a>
     </div>
   </form>
 

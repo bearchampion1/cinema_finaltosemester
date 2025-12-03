@@ -112,15 +112,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_seat'])) {
 // 新增訂單
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_order'])) {
     try {
-        $sql = "INSERT INTO `訂單` (`OrderID`,`取票代碼`,`總金額`,`訂購時間`,`ShowTimeID`)
-                VALUES (:id,:code,:amt,:otime,:show)";
+        $sql = "INSERT INTO `訂單` (`OrderID`,`取票代碼`,`總金額`,`訂購時間`,`ShowTimeID`,`顧客姓名`,`顧客Email`)
+                VALUES (:id,:code,:amt,:otime,:show,:name,:email)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':id' => $_POST['OrderID'],
             ':code' => $_POST['取票代碼'],
             ':amt' => $_POST['總金額'],
             ':otime' => $_POST['訂購時間'] ?: null,
-            ':show' => $_POST['ShowTimeID']
+            ':show' => $_POST['ShowTimeID'],
+            ':name' => $_POST['顧客姓名'] ?? '',
+            ':email' => $_POST['顧客Email'] ?? ''
         ]);
         $message = "✅ 新增訂單成功";
     } catch (PDOException $e) {
@@ -498,6 +500,8 @@ $payRows     = $pdo->query("SELECT * FROM `付款` ORDER BY `付款時間` DESC"
         <div class="col-md-2"><input class="form-control" type="number" step="0.01" name="總金額" placeholder="總金額"></div>
         <div class="col-md-3"><input class="form-control" type="datetime-local" name="訂購時間"></div>
         <div class="col-md-2"><input class="form-control" name="ShowTimeID" placeholder="ShowTimeID"></div>
+        <div class="col-md-3"><input class="form-control" name="顧客姓名" placeholder="顧客姓名"></div>
+        <div class="col-md-3"><input class="form-control" type="email" name="顧客Email" placeholder="顧客Email"></div>
         <div class="col-md-2"><button class="btn btn-primary w-100">新增</button></div>
       </form>
 

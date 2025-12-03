@@ -30,6 +30,38 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([':id' => $showtime_id]);
 $seats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+/* 檢查是否還有可售座位 */
+$availableSeats = 0;
+foreach ($seats as $seat) {
+    if ($seat['狀態'] === '可售') {
+        $availableSeats++;
+    }
+}
+
+if ($availableSeats <= 0) {
+    die("
+    <!doctype html>
+    <html lang='zh-Hant'>
+    <head>
+        <meta charset='utf-8'>
+        <title>座位已售完</title>
+        <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css' rel='stylesheet'>
+    </head>
+    <body class='bg-light'>
+        <div class='container text-center mt-5'>
+            <div class='alert alert-danger'>
+                <h2>❌ 很抱歉，此場次座位已售完</h2>
+                <p>電影：" . htmlspecialchars($show['片名']) . "</p>
+                <p>影廳：" . htmlspecialchars($show['廳名']) . "</p>
+                <p>場次時間：" . htmlspecialchars($show['播放日期'] . ' ' . $show['開始時間']) . "</p>
+            </div>
+            <a href='user_search.php' class='btn btn-primary'>返回場次查詢</a>
+        </div>
+    </body>
+    </html>
+    ");
+}
+
 /* 將座位分群（以 RowNo 為鍵） */
 $rows = [];
 foreach ($seats as $seat) {
@@ -72,10 +104,30 @@ body { background: #f8f9fa; }
   <?php endif; ?>
 
   <!-- 💺 座位顯示區 -->
-  <form method="post" action="confirm_order.php">
+  <form method="post" action="confirm_order.php" id="bookingForm">
     <input type="hidden" name="ShowTimeID" value="<?= htmlspecialchars($showtime_id) ?>">
     <input type="hidden" name="selectedSeats" id="selectedSeats">
     <input type="hidden" name="totalAmount" id="totalAmount">
+
+    <!-- 👤 顧客資訊輸入 -->
+    <div class="row mb-4 justify-content-center">
+      <div class="col-md-6">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title text-center mb-3">👤 訂購人資訊</h5>
+            <div class="mb-3">
+              <label class="form-label">姓名 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="customer_name" id="customer_name" required placeholder="請輸入您的姓名">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" name="customer_email" id="customer_email" required placeholder="example@email.com">
+            </div>
+            <small class="text-muted">📧 請填寫正確的聯絡資訊，訂單查詢時需要驗證</small>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="text-center mb-3">
       <h5 class="text-secondary">請選擇座位</h5>

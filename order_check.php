@@ -7,25 +7,31 @@ $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $code = trim($_POST["code"]);
+    $customerName = trim($_POST["customer_name"] ?? "");
+    $customerEmail = trim($_POST["customer_email"] ?? "");
 
-    if ($code !== "") {
-        $sql = "SELECT o.OrderID, o.取票代碼, o.總金額, p.付款狀態 AS 付款狀態, o.訂購時間,
+    if ($code !== "" && $customerName !== "" && $customerEmail !== "") {
+        $sql = "SELECT o.OrderID, o.取票代碼, o.總金額, o.顧客姓名, o.顧客Email, p.付款狀態 AS 付款狀態, o.訂購時間,
                  s.播放日期, s.開始時間, m.片名, t.廳名
           FROM 訂單 o
           LEFT JOIN 付款 p ON o.OrderID = p.OrderID
           JOIN 場次 s ON o.ShowTimeID = s.ShowTimeID
           JOIN movie m ON s.MovieID = m.MovieID
           JOIN 影廳 t ON s.TheaterID = t.TheaterID
-          WHERE o.取票代碼 = :code";
+          WHERE o.取票代碼 = :code AND o.顧客姓名 = :name AND o.顧客Email = :email";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([':code' => $code]);
+        $stmt->execute([
+            ':code' => $code,
+            ':name' => $customerName,
+            ':email' => $customerEmail
+        ]);
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$order) {
-            $error = "❌ 查無此取票代碼，請確認輸入是否正確。";
+            $error = "❌ 訂單資訊不符，請確認取票代碼、姓名與 Email 是否正確。";
         }
     } else {
-        $error = "⚠️ 請輸入取票代碼。";
+        $error = "⚠️ 請填寫完整資訊（取票代碼、姓名、Email）。";
     }
 }
 ?>
@@ -49,7 +55,7 @@ body { background: #f8f9fa; font-family: "微軟正黑體"; }
 <!-- ✅ 導覽列 -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="index.php">🎬 Cinema System</a>
+    <a class="navbar-brand fw-bold" href="index.php">🎬好秀電影院</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -69,10 +75,19 @@ body { background: #f8f9fa; font-family: "微軟正黑體"; }
     <h3 class="text-center text-primary mb-3">🎟 查詢購票紀錄</h3>
 
     <form method="post" class="mb-4">
-      <div class="input-group">
+      <div class="mb-3">
+        <label class="form-label">取票代碼 <span class="text-danger">*</span></label>
         <input type="text" name="code" class="form-control" placeholder="請輸入取票代碼" required>
-        <button class="btn btn-primary">查詢</button>
       </div>
+      <div class="mb-3">
+        <label class="form-label">姓名 <span class="text-danger">*</span></label>
+        <input type="text" name="customer_name" class="form-control" placeholder="請輸入訂購人姓名" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email <span class="text-danger">*</span></label>
+        <input type="email" name="customer_email" class="form-control" placeholder="請輸入訂購人 Email" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">查詢訂單</button>
     </form>
 
     <?php if ($error): ?>

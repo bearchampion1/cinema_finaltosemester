@@ -12,9 +12,19 @@ if (!isset($_POST['ShowTimeID']) || !isset($_POST['selectedSeats'])) {
 $showtimeID = $_POST['ShowTimeID'];
 $seatList = json_decode($_POST['selectedSeats'], true);
 $totalAmount = floatval($_POST['totalAmount']);
+$customerName = trim($_POST['customer_name'] ?? '');
+$customerEmail = trim($_POST['customer_email'] ?? '');
 
 if (!$seatList || count($seatList) == 0) {
     die("❌ 未選擇座位！");
+}
+
+if (empty($customerName) || empty($customerEmail)) {
+    die("❌ 請填寫完整的顧客資訊（姓名與 Email）");
+}
+
+if (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+    die("❌ Email 格式不正確");
 }
 
 /* 伺服器端：檢查是否距開場不足 10 分鐘，若是則拒絕（防止繞過前端） */
@@ -103,14 +113,16 @@ try {
     ----------------------------------------------------- */
     $stmt = $pdo->prepare("
         INSERT INTO 訂單 
-        (`OrderID`,`取票代碼`,`總金額`,`訂購時間`,`ShowTimeID`)
-        VALUES (:oid, :code, :total, NOW(), :stid)
+        (`OrderID`,`取票代碼`,`總金額`,`訂購時間`,`ShowTimeID`,`顧客姓名`,`顧客Email`)
+        VALUES (:oid, :code, :total, NOW(), :stid, :name, :email)
     ");
     $stmt->execute([
         ':oid' => $orderID,
         ':code' => $ticketCode,
         ':total' => $totalAmount,
-        ':stid' => $showtimeID
+        ':stid' => $showtimeID,
+        ':name' => $customerName,
+        ':email' => $customerEmail
     ]);
 
     /* -----------------------------------------------------
@@ -166,6 +178,43 @@ try {
 
     $pdo->commit();
 
+    /* -----------------------------------------------------
+      ⑦ 查詢電影與場次資訊（用於頁面顯示）
+    ----------------------------------------------------- */
+    $emailQuery = $pdo->prepare("
+        SELECT m.片名, m.類型, s.播放日期, s.開始時間, t.廳名
+        FROM 場次 s
+        JOIN movie m ON s.MovieID = m.MovieID
+        JOIN 影廳 t ON s.TheaterID = t.TheaterID
+        WHERE s.ShowTimeID = :stid
+    ");
+    $emailQuery->execute([':stid' => $showtimeID]);
+    $movieInfo = $emailQuery->fetch(PDO::FETCH_ASSOC);
+    
+    /* -----------------------------------------------------
+      ⑧ 發送訂票通知 Email
+    ----------------------------------------------------- */
+    try {
+        require_once 'send_ticket_email.php';
+        
+        $emailSent = sendTicketEmail(
+            $customerEmail, 
+            $customerName, 
+            $ticketCode, 
+            $orderID, 
+            $movieInfo, 
+            $seatList, 
+            $totalAmount
+        );
+        
+        if (!$emailSent) {
+            error_log("Email 發送失敗 - 訂單：{$orderID}, Email：{$customerEmail}");
+        }
+    } catch (Exception $emailError) {
+        // Email 發送失敗不影響訂單
+        error_log("Email 發送異常：" . $emailError->getMessage());
+    }
+
 } catch (Exception $e) {
     $pdo->rollBack();
     die("<h2>❌ 購票失敗</h2><p>{$e->getMessage()}</p>");
@@ -185,20 +234,97 @@ try {
 <div class="container text-center">
 
   <h2 class="text-success mb-3">🎉 訂票成功！</h2>
-  <p class="fs-5">您的取票代碼：<b><?= htmlspecialchars($ticketCode) ?></b></p>
-
-  <div class="my-3">
-    <img src="phpqrcode/qrcode.php?text=<?= urlencode($ticketCode) ?>" alt="QR Code">
+  
+  <!-- Email 通知 -->
+  <div class="alert alert-success mx-auto mb-3" style="max-width: 600px;">
+    <strong>📧 訂票確認信已發送</strong><br>
+    <small>我們已將取票代碼與完整訂票資訊發送至 <strong><?= htmlspecialchars($customerEmail) ?></strong><br>
+    請查收 Email 以取得電子票券與 QR Code</small>
+  </div>
+  
+  <!-- 取票代碼 -->
+  <div class="card mx-auto mb-4" style="max-width: 500px;">
+    <div class="card-body bg-warning bg-opacity-25">
+      <h5 class="card-title text-center">📱 取票代碼</h5>
+      <p class="text-center display-4 fw-bold text-primary mb-2"><?= htmlspecialchars($ticketCode) ?></p>
+      <p class="text-center text-muted">請憑此代碼至櫃檯或自助機取票</p>
+    </div>
   </div>
 
-  <h4>訂購座位</h4>
-  <p>
-    <?php foreach ($seatList as $s) echo htmlspecialchars($s['name']) . "<br>"; ?>
-  </p>
+  <!-- 訂單資訊 -->
+  <div class="card mx-auto mb-3" style="max-width: 600px;">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">🎬 電影資訊</h5>
+    </div>
+    <div class="card-body text-start">
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">電影名稱：</div>
+        <div class="col-8"><?= htmlspecialchars($movieInfo['片名']) ?></div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">類型：</div>
+        <div class="col-8"><?= htmlspecialchars($movieInfo['類型']) ?></div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">影廳：</div>
+        <div class="col-8"><?= htmlspecialchars($movieInfo['廳名']) ?></div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">播放日期：</div>
+        <div class="col-8"><?= htmlspecialchars($movieInfo['播放日期']) ?></div>
+      </div>
+      <div class="row">
+        <div class="col-4 fw-bold">開始時間：</div>
+        <div class="col-8"><?= htmlspecialchars($movieInfo['開始時間']) ?></div>
+      </div>
+    </div>
+  </div>
 
-  <h4>總金額：NT$ <?= htmlspecialchars($totalAmount) ?></h4>
+  <!-- 座位與金額 -->
+  <div class="card mx-auto mb-3" style="max-width: 600px;">
+    <div class="card-header bg-success text-white">
+      <h5 class="mb-0">💺 訂購資訊</h5>
+    </div>
+    <div class="card-body text-start">
+      <div class="mb-3">
+        <strong>座位：</strong>
+        <p class="mb-0">
+          <?php foreach ($seatList as $s) echo '<span class="badge bg-secondary me-1">' . htmlspecialchars($s['name']) . '</span>'; ?>
+        </p>
+      </div>
+      <div class="mb-3">
+        <strong>訂單編號：</strong> <?= htmlspecialchars($orderID) ?>
+      </div>
+      <div class="mb-3">
+        <strong>顧客姓名：</strong> <?= htmlspecialchars($customerName) ?>
+      </div>
+      <div class="mb-3">
+        <strong>Email：</strong> <?= htmlspecialchars($customerEmail) ?>
+      </div>
+      <div>
+        <strong class="fs-5">總金額：</strong> <span class="text-danger fs-4 fw-bold">NT$ <?= htmlspecialchars($totalAmount) ?></span>
+      </div>
+      <div class="mt-2">
+        <span class="badge bg-success">✓ 已付款</span>
+      </div>
+    </div>
+  </div>
 
-  <a href="user_search.php" class="btn btn-primary mt-3">返回查詢</a>
+  <!-- 注意事項 -->
+  <div class="alert alert-warning mx-auto" style="max-width: 600px; text-align: left;">
+    <strong>⚠️ 注意事項：</strong>
+    <ul class="mb-0 mt-2">
+      <li>請提前 15 分鐘到達影廳取票入場</li>
+      <li>請妥善保管您的取票代碼</li>
+      <li>可至「查看電子票券」頁面查詢完整票券資訊</li>
+    </ul>
+  </div>
+
+  <!-- 操作按鈕 -->
+  <div class="mt-4">
+    <a href="ticket.php?code=<?= urlencode($ticketCode) ?>" class="btn btn-success me-2">查看電子票券</a>
+    <a href="user_search.php" class="btn btn-primary">返回查詢</a>
+  </div>
 </div>
 </body>
 </html>

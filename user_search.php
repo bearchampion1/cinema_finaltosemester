@@ -27,35 +27,59 @@ $perPage = 10; // 每頁筆數
 $page = max(1, intval($_GET['page'] ?? 1));
 $offset = ($page - 1) * $perPage;
 
-/* 🧾 訂單總筆數 */
-$countStmt = $pdo->prepare("
-    SELECT COUNT(*) FROM 訂單 o
-    JOIN 場次 s ON o.ShowTimeID = s.ShowTimeID
-    JOIN movie m ON s.MovieID = m.MovieID
-    JOIN 影廳 t ON s.TheaterID = t.TheaterID
-    WHERE 1=1 $where
-");
-$countStmt->execute($params);
-$totalRows = $countStmt->fetchColumn();
-$totalPages = max(1, ceil($totalRows / $perPage));
+/* 🧾 訂單紀錄：需要驗證才能查詢 */
+$historyOrders = [];
+$orderVerified = false;
+$orderError = '';
 
-/* 🧾 查詢訂單紀錄（含電影與影廳） */
-$sql = "
-    SELECT o.OrderID, o.取票代碼, o.總金額, o.訂購時間,
-           COALESCE(p.付款狀態, '未付款') AS 付款狀態,
-           m.片名, t.廳名
-    FROM 訂單 o
-    JOIN 場次 s ON o.ShowTimeID = s.ShowTimeID
-    JOIN movie m ON s.MovieID = m.MovieID
-    JOIN 影廳 t ON s.TheaterID = t.TheaterID
-    LEFT JOIN 付款 p ON o.OrderID = p.OrderID
-    WHERE 1=1 $where
-    ORDER BY o.訂購時間 DESC
-    LIMIT $perPage OFFSET $offset
-";
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$historyOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_order'])) {
+    $verifyName = trim($_POST['verify_name'] ?? '');
+    $verifyEmail = trim($_POST['verify_email'] ?? '');
+    
+    if (!empty($verifyName) && !empty($verifyEmail)) {
+        /* 🧾 訂單總筆數（含驗證） */
+        $countStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM 訂單 o
+            JOIN 場次 s ON o.ShowTimeID = s.ShowTimeID
+            JOIN movie m ON s.MovieID = m.MovieID
+            JOIN 影廳 t ON s.TheaterID = t.TheaterID
+            WHERE o.顧客姓名 = :name AND o.顧客Email = :email $where
+        ");
+        $verifyParams = array_merge($params, [':name' => $verifyName, ':email' => $verifyEmail]);
+        $countStmt->execute($verifyParams);
+        $totalRows = $countStmt->fetchColumn();
+        $totalPages = max(1, ceil($totalRows / $perPage));
+
+        /* 🧾 查詢訂單紀錄（含電影與影廳，需驗證） */
+        $sql = "
+            SELECT o.OrderID, o.取票代碼, o.總金額, o.訂購時間,
+                   COALESCE(p.付款狀態, '未付款') AS 付款狀態,
+                   m.片名, t.廳名
+            FROM 訂單 o
+            JOIN 場次 s ON o.ShowTimeID = s.ShowTimeID
+            JOIN movie m ON s.MovieID = m.MovieID
+            JOIN 影廳 t ON s.TheaterID = t.TheaterID
+            LEFT JOIN 付款 p ON o.OrderID = p.OrderID
+            WHERE o.顧客姓名 = :name AND o.顧客Email = :email $where
+            ORDER BY o.訂購時間 DESC
+            LIMIT $perPage OFFSET $offset
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($verifyParams);
+        $historyOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $orderVerified = true;
+        
+        if (empty($historyOrders)) {
+            $orderError = '❌ 查無符合的訂單紀錄，請確認姓名與 Email 是否正確。';
+        }
+    } else {
+        $orderError = '⚠️ 請填寫姓名與 Email 以查詢訂單。';
+    }
+} else {
+    // 未驗證時，不查詢訂單
+    $totalRows = 0;
+    $totalPages = 1;
+}
 ?>
 <!doctype html>
 <html lang="zh-Hant">
@@ -110,6 +134,9 @@ body { background: #f8f9fa; font-family: "微軟正黑體"; }
       $cutoff = clone $now;
       $cutoff->modify('+10 minutes'); // 購票關閉的時間點：開場前10分鐘
       if ($dt <= $cutoff) continue; // 若場次在 10 分鐘內或已開始，直接隱藏
+      
+      // 檢查座位是否已售完
+      $soldOut = ($r['可用座位數'] <= 0);
     ?>
     <div class="card shadow-sm">
       <div class="card-body">
@@ -119,9 +146,18 @@ body { background: #f8f9fa; font-family: "微軟正黑體"; }
           🏢 影廳：<?= htmlspecialchars($r['廳名']) ?><br>
           📅 日期：<?= htmlspecialchars($r['播放日期']) ?><br>
           ⏰ 時間：<?= htmlspecialchars($r['開始時間']) ?><br>
-          💺 可用座位數：<?= htmlspecialchars($r['可用座位數']) ?>
+          💺 可用座位數：
+          <?php if ($soldOut): ?>
+            <span class="text-danger fw-bold">0（已售完）</span>
+          <?php else: ?>
+            <span class="text-success fw-bold"><?= htmlspecialchars($r['可用座位數']) ?></span>
+          <?php endif; ?>
         </p>
-        <a href="booking.php?showtime=<?= urlencode($r['ShowTimeID']) ?>" class="btn btn-primary">立即購票</a>
+        <?php if ($soldOut): ?>
+          <button class="btn btn-secondary" disabled>已售完</button>
+        <?php else: ?>
+          <a href="booking.php?showtime=<?= urlencode($r['ShowTimeID']) ?>" class="btn btn-primary">立即購票</a>
+        <?php endif; ?>
       </div>
     </div>
   <?php endforeach; ?>
@@ -131,20 +167,45 @@ body { background: #f8f9fa; font-family: "微軟正黑體"; }
 <div class="container mt-5">
   <h3 class="text-primary mb-3 text-center">🧾 過去訂單紀錄</h3>
 
-  <!-- 🔍 搜尋 -->
-  <form method="get" class="mb-3 text-center">
-    <div class="input-group w-50 mx-auto">
-      <input type="text" name="search" class="form-control" placeholder="輸入電影名稱或影廳關鍵字..." value="<?= htmlspecialchars($keyword) ?>">
-      <button class="btn btn-primary" type="submit">搜尋</button>
-      <?php if (!empty($keyword)): ?>
-        <a href="index.php" class="btn btn-outline-secondary">清除</a>
-      <?php endif; ?>
+  <!-- 驗證表單 -->
+  <?php if (!$orderVerified): ?>
+    <div class="card shadow-sm mx-auto" style="max-width: 500px;">
+      <div class="card-body">
+        <h5 class="card-title text-center">🔒 驗證身份</h5>
+        <p class="text-muted text-center">請輸入姓名與 Email 查詢訂單紀錄</p>
+        
+        <?php if (!empty($orderError)): ?>
+          <div class="alert alert-warning"><?= htmlspecialchars($orderError) ?></div>
+        <?php endif; ?>
+        
+        <form method="post">
+          <div class="mb-3">
+            <label for="verify_name" class="form-label">👤 姓名</label>
+            <input type="text" class="form-control" id="verify_name" name="verify_name" required>
+          </div>
+          <div class="mb-3">
+            <label for="verify_email" class="form-label">📧 Email</label>
+            <input type="email" class="form-control" id="verify_email" name="verify_email" required>
+          </div>
+          <button type="submit" name="verify_order" class="btn btn-primary w-100">驗證並查詢</button>
+        </form>
+      </div>
     </div>
-  </form>
-
-  <?php if (empty($historyOrders)): ?>
-    <p class="text-muted text-center">沒有符合條件的訂單紀錄。</p>
   <?php else: ?>
+    <!-- 🔍 搜尋 -->
+    <form method="get" class="mb-3 text-center">
+      <div class="input-group w-50 mx-auto">
+        <input type="text" name="search" class="form-control" placeholder="輸入電影名稱或影廳關鍵字..." value="<?= htmlspecialchars($keyword) ?>">
+        <button class="btn btn-primary" type="submit">搜尋</button>
+        <?php if (!empty($keyword)): ?>
+          <a href="user_search.php" class="btn btn-outline-secondary">清除</a>
+        <?php endif; ?>
+      </div>
+    </form>
+
+    <?php if (empty($historyOrders)): ?>
+      <p class="text-muted text-center">沒有符合條件的訂單紀錄。</p>
+    <?php else: ?>
     <table class="table table-bordered table-hover bg-white shadow-sm">
       <thead class="table-secondary text-center">
         <tr>
@@ -195,6 +256,7 @@ body { background: #f8f9fa; font-family: "微軟正黑體"; }
         <?php endfor; ?>
       </ul>
     </nav>
+    <?php endif; ?>
   <?php endif; ?>
 </div>
 

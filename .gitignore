@@ -1,0 +1,67 @@
+# 敏感設定檔 - 絕對不要上傳
+email_config.php
+config.php
+
+# 環境變數
+.env
+.env.local
+.env.*.local
+
+# 快取與臨時檔案
+phpqrcode/cache/
+*.cache
+*.tmp
+*.temp
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# IDE 與編輯器設定
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 日誌檔案
+*.log
+error_log
+debug.log
+
+# 上傳的檔案（如果有）
+uploads/
+temp/
+tmp/
+
+# Composer 依賴（如果使用）
+vendor/
+composer.lock
+composer.phar
+
+# PHPMailer 原始碼壓縮檔（保留解壓後的資料夾即可）
+*.zip
+*.tar.gz
+PHPMailer*.zip
+
+# 資料庫備份（通常很大）
+*.sql.gz
+backup/
+dumps/
+
+# 測試用檔案
+test.php
+test_*.php
+debug.php
+
+# Node modules（如果有前端工具）
+node_modules/
+package-lock.json
+
+# 作業系統產生的檔案
+*.bak
+*.old
+*.orig
